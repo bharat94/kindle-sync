@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>KindleSync</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="toolbar">
+    <div class="brand" aria-label="KindleSync">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M5 4.5c2.5-.7 4.8-.2 7 1.4v14c-2.2-1.6-4.5-2-7-1.4v-14Zm14 0c-2.5-.7-4.8-.2-7 1.4v14c2.2-1.6 4.5-2 7-1.4v-14Z"/></svg>
+      </span>
+      <span>KindleSync</span>
+    </div>
+    <nav class="mode-switch" aria-label="Delivery method">
+      <button class="mode-button active" data-mode="email" aria-pressed="true">Wireless</button>
+      <button class="mode-button" data-mode="usb" aria-pressed="false">USB</button>
+    </nav>
+    <div class="toolbar-actions">
+      <span id="routeStatus" class="status-pill"><span class="status-dot"></span><span>Setup required</span></span>
+      <button id="historyButton" class="icon-button" aria-label="Delivery history" title="History">
+        <svg viewBox="0 0 24 24"><path d="M12 7v5l3 2M4.9 5.5A8 8 0 1 1 4 16m0 0H1m3 0v3"/></svg>
+      </button>
+      <button id="settingsButton" class="icon-button" aria-label="Settings" title="Settings (⌘,)">
+        <svg viewBox="0 0 24 24"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Zm7-3.2 2-1-2-3.5-2.2.3a7 7 0 0 0-1.5-.9L14.5 5h-5l-.8 1.9a7 7 0 0 0-1.5.9L5 7.5 3 11l2 1c0 .6.1 1.2.3 1.8L4 15.5 6.5 19l2.1-.8c.5.4 1 .7 1.6.9l.3 2.2h4l.3-2.2c.6-.2 1.1-.5 1.6-.9l2.1.8 2.5-3.5-1.3-1.7c.2-.6.3-1.2.3-1.8Z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <section id="dropZone" class="drop-zone" aria-labelledby="dropTitle">
+      <input id="fileInput" class="visually-hidden" type="file" multiple accept=".epub,.pdf,.doc,.docx,.txt,.rtf,.htm,.html,.png,.jpg,.jpeg,.gif,.bmp,.zip,.azw,.azw3,.mobi,.kfx">
+      <div class="drop-art" aria-hidden="true">
+        <svg viewBox="0 0 48 48"><path d="M14 10h14l6 6v22H14V10Zm14 0v7h6M24 22v10m-4-4 4 4 4-4"/></svg>
+      </div>
+      <div class="drop-copy">
+        <h1 id="dropTitle">Drop books to send</h1>
+        <p id="dropSubtitle">EPUB, PDF, Word, text, HTML, and images</p>
+      </div>
+      <button id="chooseButton" class="button secondary">Choose Books…</button>
+    </section>
+
+    <section id="queueSection" class="queue-section" aria-labelledby="queueTitle" hidden>
+      <div class="section-heading">
+        <div><p class="eyebrow">Ready to go</p><h2 id="queueTitle">Books</h2></div>
+        <div class="heading-actions"><button id="addMoreButton" class="text-button">Add more</button><button id="clearButton" class="text-button muted">Clear</button></div>
+      </div>
+      <ul id="fileList" class="file-list"></ul>
+    </section>
+
+    <section id="usbGuide" class="guide-card" hidden>
+      <div class="guide-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3h8v6h3v7h-5v5h-4v-5H5V9h3V3Zm2 0v6h4V3M7 11v3h10v-3"/></svg></div>
+      <div><h2 id="usbGuideTitle">Connect your Kindle</h2><p id="usbGuideText">Use a data cable, unlock the Kindle, then wait a moment.</p><div id="usbGuideActions" class="inline-actions"><button id="detectButton" class="button secondary">Detect again</button><button id="chooseUsbTargetButton" class="text-button" hidden>Choose Kindle</button><button id="useWirelessButton" class="text-button">Use Wireless</button><button id="amazonUsbButton" class="text-button" hidden>Amazon USB help</button></div></div>
+    </section>
+
+    <section id="notice" class="notice" aria-live="polite" hidden></section>
+    <button id="webFallbackButton" class="button secondary fallback-button" hidden>Open Amazon’s 200 MB uploader ↗</button>
+
+    <section id="receipt" class="receipt" aria-labelledby="receiptTitle" hidden>
+      <div class="receipt-check" aria-hidden="true">✓</div>
+      <div><p class="eyebrow">Transfer receipt</p><h2 id="receiptTitle"></h2><p id="receiptStatement"></p><p id="receiptMeta" class="meta"></p></div>
+    </section>
+
+    <details id="details" class="details">
+      <summary>Transfer details</summary>
+      <ol id="detailList" class="detail-list" aria-live="polite"></ol>
+    </details>
+  </main>
+
+  <footer class="action-bar">
+    <div><strong id="batchSummary">No books queued</strong><span id="privacySummary">Wireless sends files through your mail provider to Amazon.</span></div>
+    <button id="sendButton" class="button primary" disabled>Send Books</button>
+  </footer>
+
+  <dialog id="settingsDialog" class="dialog settings-dialog">
+    <form id="settingsForm" method="dialog">
+      <header class="dialog-header"><div><p class="eyebrow">One-time setup</p><h2>Wireless delivery</h2></div><button class="icon-button close-dialog" value="cancel" aria-label="Close settings">×</button></header>
+      <div class="dialog-body">
+        <section class="form-section">
+          <div class="step">1</div><div class="form-content"><h3>Your Kindle address</h3><p>Find this under Personal Document Settings in your Amazon account.</p><label for="kindleEmail">Send-to-Kindle email</label><input id="kindleEmail" type="email" placeholder="name_123@kindle.com" autocomplete="off"><button id="amazonSettingsButton" type="button" class="text-button">Open Amazon settings ↗</button></div>
+        </section>
+        <section class="form-section">
+          <div class="step">2</div><div class="form-content"><h3>Approved sender</h3><p>Amazon accepts documents only from addresses on your approved list.</p><label for="senderEmail">Sender email</label><input id="senderEmail" type="email" placeholder="Sign in below to choose your Gmail address" autocomplete="email"><label class="check-label"><input id="approvedSender" type="checkbox"><span>I added this address to Amazon's Approved Personal Document Email List.</span></label></div>
+        </section>
+        <section class="form-section">
+          <div class="step">3</div><div class="form-content"><h3>Mail provider</h3><p id="providerDescription">Connect Google once. KindleSync requests permission to send email—not to read your inbox.</p><label for="smtpProvider">Provider</label><select id="smtpProvider"><option value="gmail">Gmail — Sign in with Google</option><option value="icloud">iCloud Mail</option><option value="outlook">Outlook</option><option value="custom">Custom SMTP</option></select>
+            <div id="googleAccountPanel" class="account-panel">
+              <div class="account-copy"><strong id="googleAccountTitle">Google account not connected</strong><span id="googleAccountDetail">Your authorization token is encrypted with macOS Keychain.</span></div>
+              <button id="googleSignInButton" type="button" class="button google-button">Sign in with Google</button>
+              <button id="googleDisconnectButton" type="button" class="text-button danger" hidden>Disconnect</button>
+            </div>
+            <div id="smtpFields" hidden>
+              <div class="field-grid"><div><label for="smtpHost">SMTP host</label><input id="smtpHost" autocomplete="off"></div><div class="narrow-field"><label for="smtpPort">Port</label><input id="smtpPort" type="number" min="1" max="65535"></div></div><label for="smtpUser">SMTP username</label><input id="smtpUser" autocomplete="username"><label for="smtpPass">App password</label><input id="smtpPass" type="password" autocomplete="new-password"><div class="field-grid"><label class="check-label"><input id="smtpSecure" type="checkbox"><span>Direct TLS (usually port 465)</span></label><div><label for="smtpMaxMb">Batch limit (MB)</label><input id="smtpMaxMb" type="number" min="1" max="50"></div></div><button id="appPasswordHelp" type="button" class="text-button">Provider app-password help ↗</button>
+            </div>
+          </div>
+        </section>
+        <p id="settingsMessage" class="form-message" role="alert" hidden></p>
+        <div class="privacy-row"><div><strong>Local privacy</strong><span>Erase account connections, addresses, settings, history, and the current queue.</span></div><button id="eraseDataButton" type="button" class="text-button danger">Erase All Data…</button></div>
+      </div>
+      <footer class="dialog-footer"><button id="forgetPasswordButton" type="button" class="text-button danger">Forget saved password</button><span class="spacer"></span><button id="testButton" type="button" class="button secondary">Test Connection</button><button id="saveSettingsButton" type="submit" value="default" class="button primary">Save Settings</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="historyDialog" class="dialog history-dialog">
+    <header class="dialog-header"><div><p class="eyebrow">Stored only on this Mac</p><h2>Delivery history</h2></div><button class="icon-button close-dialog" aria-label="Close history">×</button></header>
+    <div class="dialog-body"><ol id="historyList" class="history-list"></ol><p id="emptyHistory" class="empty-copy">No delivery receipts yet.</p></div>
+    <footer class="dialog-footer"><button id="clearHistoryButton" class="text-button danger">Clear History</button><span class="spacer"></span><button class="button secondary close-history">Done</button></footer>
+  </dialog>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+# Dependencies and generated builds
+node_modules/
+dist/
+out/
+coverage/
+playwright-report/
+test-results/
+
+# Local runtime state and logs
+kindle-sync-config.json
+*.log
+npm-debug.log*
+.DS_Store
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+google-oauth-client.json
+client_secret_*.json
+credentials.json
+token.json
+*.pem
+*.key
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+
+# Editor/OS state
+.idea/
+.vscode/
+*.swp
+*~

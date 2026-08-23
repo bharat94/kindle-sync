@@ -11,7 +11,7 @@
     "test:e2e": "playwright test",
     "test:all": "npm test && npm run test:e2e",
     "check": "find main.js preload.js renderer src scripts test -name '*.js' -type f -print0 | xargs -0 -n1 node --check",
-    "build": "electron-builder --mac --universal -c.mac.identity=- -c.mac.entitlements=build/entitlements.adhoc.plist -c.mac.entitlementsInherit=build/entitlements.adhoc.plist",
+    "build": "electron-builder --mac --universal --publish never -c.mac.identity=- -c.mac.entitlements=build/entitlements.adhoc.plist -c.mac.entitlementsInherit=build/entitlements.adhoc.plist",
     "build:dir": "electron-builder --mac --universal --dir -c.mac.identity=- -c.mac.entitlements=build/entitlements.adhoc.plist -c.mac.entitlementsInherit=build/entitlements.adhoc.plist",
     "build:release": "electron-builder --mac --universal -c.forceCodeSigning=true",
     "verify:package": "node scripts/verify-package.js"

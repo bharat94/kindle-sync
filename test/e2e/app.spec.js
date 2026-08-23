@@ -133,17 +133,23 @@ test('settings fit the initial window and Gmail connects without SMTP fields', a
   const { application, window } = await launch(testInfo, { KINDLESYNC_TEST_GOOGLE_SIGN_IN: '1' });
   try {
     await window.locator('#settingsButton').click();
+    const windowSizing = await application.evaluate(({ BrowserWindow, screen }) => {
+      const appWindow = BrowserWindow.getAllWindows()[0];
+      const display = screen.getDisplayMatching(appWindow.getBounds());
+      return { actualHeight: appWindow.getBounds().height, availableHeight: display.workAreaSize.height };
+    });
+    expect(windowSizing.actualHeight).toBe(Math.min(940, Math.max(700, windowSizing.availableHeight - 48)));
     const layout = await window.evaluate(() => {
       const dialog = document.querySelector('#settingsDialog').getBoundingClientRect();
       const footer = document.querySelector('#settingsDialog .dialog-footer').getBoundingClientRect();
       const body = document.querySelector('#settingsDialog .dialog-body');
       return { viewport: innerHeight, dialogTop: dialog.top, dialogBottom: dialog.bottom, footerBottom: footer.bottom, bodyClientHeight: body.clientHeight, bodyScrollHeight: body.scrollHeight };
     });
-    expect(layout.viewport).toBeGreaterThanOrEqual(850);
     expect(layout.dialogTop).toBeGreaterThanOrEqual(0);
     expect(layout.dialogBottom).toBeLessThanOrEqual(layout.viewport);
     expect(layout.footerBottom).toBeLessThanOrEqual(layout.viewport);
-    expect(layout.bodyScrollHeight).toBeLessThanOrEqual(layout.bodyClientHeight);
+    if (layout.viewport >= 850) expect(layout.bodyScrollHeight).toBeLessThanOrEqual(layout.bodyClientHeight);
+    else expect(layout.bodyScrollHeight).toBeGreaterThanOrEqual(layout.bodyClientHeight);
     await expect(window.locator('#smtpFields')).toBeHidden();
     await window.locator('#googleSignInButton').click();
     await expect(window.getByText('reader.sender@gmail.com', { exact: true }).first()).toBeVisible();

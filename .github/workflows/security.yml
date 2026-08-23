@@ -7,26 +7,34 @@ on:
     branches: [main]
   schedule:
     - cron: "17 8 * * 1"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  dependency-and-test:
-    runs-on: macos-latest
+  dependency-audit:
+    name: Dependency provenance and audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm audit --audit-level=low
       - run: npm audit signatures
-      - run: npm run test:all
 
   codeql:
-    runs-on: macos-latest
+    name: CodeQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       security-events: write

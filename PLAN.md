@@ -276,6 +276,9 @@ Legend: `[x]` complete, `[~]` in progress, `[ ]` not started, `[!]` externally b
 - [x] Playwright Electron E2E: launch, queue, hostile name, settings, modes, boundary.
 - [x] Audit, full suite, unpacked build, packaged launch smoke.
 - [x] Universal build configuration, hardened runtime, associations, icon, build allowlist, and runnable ad-hoc local-build path.
+- [x] GitHub macOS CI: syntax, unit/integration, Electron E2E, independent universal packaging, DMG/ZIP/code-seal/ASAR/fuse inspection, and packaged-renderer smoke.
+- [x] CI build evidence: SHA-256 manifest, short-lived DMG/ZIP artifacts, and main-branch GitHub provenance attestations.
+- [x] Separate pinned-action security workflow: signature-aware npm audit, CodeQL, weekly schedule, concurrency cancellation, and least-privilege job permissions.
 - [!] Signing/notarization and clean-machine Gatekeeper require user Apple credentials.
 - [!] Live SMTP needs user provider credentials and approved Kindle sender.
 - [!] Physical matrix needs legacy USBMS and modern MTP hardware.
@@ -295,6 +298,7 @@ Legend: `[x]` complete, `[~]` in progress, `[ ]` not started, `[!]` externally b
 - [x] Use owner-only conversion temp directories and remove crash residue on next launch.
 - [x] Add in-app Erase All Data confirmation and clear local config/queue/browser state.
 - [x] Configure hardened Electron fuses, Dependabot, pinned security workflow, npm audit/signature checks, and CodeQL.
+- [x] Publish privacy-safe queue/settings screenshots, source-first setup, delivery-support matrix, security model, CI guarantees, distribution limits, troubleshooting, and contribution guidance.
 - [!] Apple signing/notarization is still required before public binary distribution.
 
 Verification record (2026-08-23):
@@ -307,7 +311,7 @@ Verification record (2026-08-23):
 - `lipo -info`: packaged executable contains both `x86_64` and `arm64`.
 - Renderer E2E: settings fit the initial 940px window without body scrolling; encrypted config/erase-all, hostile filenames, ephemeral session, Gmail-first setup, and MTP state passed.
 - Packaged production-policy smoke loaded `kindlesync://app/index.html` while hostile test/OAuth environment overrides were set. Test login stayed disabled, the environment OAuth ID was ignored, and the on-disk envelope contained only `schemaVersion` plus `protectedDataCiphertext` using production crypto.
-- v1.3.0 artifacts: `KindleSync-1.3.0-universal.dmg` SHA-256 `d6c1bec2446a136b8273a4077fb6d00d3495186061db649986b3ed630047c7e7`; ZIP SHA-256 `1893aca28f7f617d9ab2eb1999bc4b6c8ba8b6929a9f7d91bceb294e70017f2f`. The DMG checksum, embedded app signature, and nested code seals verified successfully.
+- v1.3.0 artifacts rebuilt with the CI verifier: `KindleSync-1.3.0-universal.dmg` SHA-256 `3e30c5f88496512f7a0b7ca6dc3efab43694b7fff22c8a98349909eb5cf3b991`; ZIP SHA-256 `2bc4717f5c8f350151d55bc9f4864589d3fbec41221433701b02590e2d61de04`. The DMG checksum, ZIP structure, ASAR allowlist, universal slices, Electron fuses, embedded app signature, nested code seals, and packaged renderer smoke verified successfully.
 - Local DMG/ZIP builds are ad-hoc signed so hardened ASAR-integrity smoke testing can launch; `build:release` fails closed without a Developer ID identity. Ad-hoc signatures are not publisher identities or accepted public distribution artifacts, and notarization remains blocked on the owner's Apple credentials.
 
 ### G — Native MTP v2
@@ -337,6 +341,7 @@ Packaging:
 - `npm run build:dir` and packaged launch smoke; local artifacts must carry a valid ad-hoc signature.
 - Inspect universal binary with `lipo -info`, or clearly name separate architectures.
 - Production allowlist excludes plaintext secrets/test fixtures.
+- GitHub macOS CI must validate the DMG and ZIP, code seals, both architecture slices, Electron fuses, exact ASAR contents, packaged sandbox/policy, and ciphertext-only persistence before uploading artifacts.
 - Signed release: `npm run build:release`, `codesign --verify --deep --strict`, `spctl --assess`, notarization/stapler, clean-Mac DMG install.
 
 Manual matrix:

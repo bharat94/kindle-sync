@@ -151,6 +151,18 @@ test('settings fit the initial window and Gmail connects without SMTP fields', a
     expect(layout.footerBottom).toBeLessThanOrEqual(layout.viewport);
     if (layout.viewport >= 850) expect(layout.bodyScrollHeight).toBeLessThanOrEqual(layout.bodyClientHeight);
     else expect(layout.bodyScrollHeight).toBeGreaterThanOrEqual(layout.bodyClientHeight);
+
+    await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(880, 700));
+    const constrainedLayout = await window.evaluate(() => {
+      const dialog = document.querySelector('#settingsDialog').getBoundingClientRect();
+      const footer = document.querySelector('#settingsDialog .dialog-footer').getBoundingClientRect();
+      const body = document.querySelector('#settingsDialog .dialog-body');
+      return { viewport: innerHeight, dialogTop: dialog.top, dialogBottom: dialog.bottom, footerBottom: footer.bottom, bodyClientHeight: body.clientHeight, bodyScrollHeight: body.scrollHeight };
+    });
+    expect(constrainedLayout.dialogTop).toBeGreaterThanOrEqual(0);
+    expect(constrainedLayout.dialogBottom).toBeLessThanOrEqual(constrainedLayout.viewport);
+    expect(constrainedLayout.footerBottom).toBeLessThanOrEqual(constrainedLayout.viewport);
+    expect(constrainedLayout.bodyScrollHeight).toBeGreaterThanOrEqual(constrainedLayout.bodyClientHeight);
     await expect(window.locator('#smtpFields')).toBeHidden();
     await window.locator('#googleSignInButton').click();
     await expect(window.getByText('reader.sender@gmail.com', { exact: true }).first()).toBeVisible();

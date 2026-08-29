@@ -108,7 +108,10 @@ class GoogleAuthService {
     const body = await response.json().catch(() => ({}));
     if (!response.ok || !body.access_token) {
       const code = body.error === 'invalid_grant' ? 'google_session_expired' : 'google_token_exchange_failed';
-      throw Object.assign(new Error('Google sign-in could not be completed.'), { code });
+      // Surface only Google's own error identifiers. Never echo the response
+      // body, which can carry tokens on a partial success.
+      const detail = [body.error, body.error_description].filter(part => typeof part === 'string' && part).join(': ').slice(0, 200);
+      throw Object.assign(new Error(detail ? `Google sign-in could not be completed (${detail}).` : 'Google sign-in could not be completed.'), { code });
     }
     return body;
   }

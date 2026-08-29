@@ -53,3 +53,40 @@ test('refresh exchanges the Keychain token without asking the user again', async
   const result = await service.refresh('saved-refresh');
   assert.equal(result.accessToken, 'new-access');
 });
+
+test('a failed token exchange reports Google reason without leaking tokens', async () => {
+  const service = new GoogleAuthService({
+    clientId: 'desktop-client.apps.googleusercontent.com',
+    fetchFn: async () => ({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        error: 'invalid_client',
+        error_description: 'Unauthorized',
+        access_token: 'leaked-access-token',
+        refresh_token: 'leaked-refresh-token'
+      })
+    })
+  });
+  await assert.rejects(
+    () => service.refresh('saved-refresh'),
+    error => {
+      assert.equal(error.code, 'google_token_exchange_failed');
+      assert.match(error.message, /invalid_client: Unauthorized/);
+      assert.doesNotMatch(error.message, /leaked-access-token|leaked-refresh-token|saved-refresh/);
+      return true;
+    }
+  );
+});
+
+test('an expired or reused authorization code is reported as a session problem', async () => {
+  const service = new GoogleAuthService({
+    clientId: 'desktop-client.apps.googleusercontent.com',
+    fetchFn: async () => ({ ok: false, status: 400, json: async () => ({ error: 'invalid_grant', error_description: 'Bad Request' }) })
+  });
+  await assert.rejects(() => service.refresh('stale'), error => {
+    assert.equal(error.code, 'google_session_expired');
+    assert.match(error.message, /invalid_grant/);
+    return true;
+  });
+});

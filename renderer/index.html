@@ -92,6 +92,15 @@
               <button id="googleSignInButton" type="button" class="button google-button">Sign in with Google</button>
               <button id="googleDisconnectButton" type="button" class="text-button danger" hidden>Disconnect</button><button id="googleSetupHelp" type="button" class="text-button" hidden>How to enable Google sign-in ↗</button>
             </div>
+            <details id="googleClientDetails" class="client-details">
+              <summary>Use your own Google client</summary>
+              <p id="googleClientStatus" class="client-status"></p>
+              <label for="googleClientId">Client ID</label>
+              <input id="googleClientId" autocomplete="off" spellcheck="false" placeholder="000000000000-xxxx.apps.googleusercontent.com">
+              <label for="googleClientSecret">Client secret</label>
+              <input id="googleClientSecret" type="password" autocomplete="new-password" placeholder="GOCSPX-…">
+              <div class="inline-actions"><button id="googleClientHelp" type="button" class="text-button">Create a Desktop client ↗</button><button id="clearGoogleClientButton" type="button" class="text-button danger">Remove client</button></div>
+            </details>
             <div id="smtpFields" hidden>
               <div class="field-grid"><div><label for="smtpHost">SMTP host</label><input id="smtpHost" autocomplete="off"></div><div class="narrow-field"><label for="smtpPort">Port</label><input id="smtpPort" type="number" min="1" max="65535"></div></div><label for="smtpUser">SMTP username</label><input id="smtpUser" autocomplete="username"><label for="smtpPass">App password</label><input id="smtpPass" type="password" autocomplete="new-password"><div class="field-grid"><label class="check-label"><input id="smtpSecure" type="checkbox"><span>Direct TLS (usually port 465)</span></label><div><label for="smtpMaxMb">Batch limit (MB)</label><input id="smtpMaxMb" type="number" min="1" max="50"></div></div><button id="appPasswordHelp" type="button" class="text-button">Provider app-password help ↗</button>
             </div>

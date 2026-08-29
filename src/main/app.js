@@ -144,7 +144,12 @@ function createWindow() {
 }
 
 function publicConfig() {
-  return { ...store.publicConfig(), googleOAuthAvailable: googleAuthService.available || Boolean(isTestRuntime() && process.env.KINDLESYNC_TEST_GOOGLE_SIGN_IN) };
+  const buildClientId = resolveGoogleClientId(require('../../package.json'), { allowEnvironment: !app.isPackaged });
+  return {
+    ...store.publicConfig(),
+    googleOAuthAvailable: googleAuthService.available || Boolean(isTestRuntime() && process.env.KINDLESYNC_TEST_GOOGLE_SIGN_IN),
+    googleClientSource: store.googleClient().clientId ? 'user' : buildClientId ? 'build' : 'none'
+  };
 }
 
 function safeConfigPatch(input = {}) {
@@ -159,6 +164,8 @@ function safeConfigPatch(input = {}) {
     smtpPort: Math.min(65535, Math.max(1, Number(input.smtpPort) || 587)),
     smtpSecure: input.smtpSecure === true, smtpUser: text('smtpUser'),
     smtpMaxMb: Math.min(50, Math.max(1, Number(input.smtpMaxMb) || 24)),
+    googleClientId: text('googleClientId'),
+    googleClientSecret: typeof input.googleClientSecret === 'string' ? input.googleClientSecret.slice(0, 1000) : '',
     smtpPass: typeof input.smtpPass === 'string' ? input.smtpPass.slice(0, 1000) : ''
   };
 }
@@ -197,6 +204,11 @@ function registerIpc() {
     const revoked = isTestRuntime() ? true : await googleAuthService.revoke(token);
     await store.clearGoogleAccount();
     return { ...publicConfig(), googleRevocationFailed: Boolean(token && !revoked) };
+  });
+  ipcMain.handle('google:clear-client', async event => {
+    assertTrusted(event);
+    await store.clearGoogleClient();
+    return publicConfig();
   });
   ipcMain.handle('smtp:test', async event => {
     assertTrusted(event);
@@ -317,9 +329,20 @@ function start() {
     mailService = new MailService();
     gmailService = new GmailService();
     const googleOptions = { allowEnvironment: !app.isPackaged };
+    const packageConfig = require('../../package.json');
     googleAuthService = new GoogleAuthService({
-      clientId: resolveGoogleClientId(require('../../package.json'), googleOptions),
-      clientSecret: resolveGoogleClientSecret(require('../../package.json'), googleOptions),
+      // A client the user pastes into Settings wins over anything in the build,
+      // and its own secret travels with it. The two are never mixed, because a
+      // build secret paired with a user client ID would only produce a
+      // confusing invalid_client from Google.
+      credentialsProvider: () => {
+        const own = store.googleClient();
+        if (own.clientId) return own;
+        return {
+          clientId: resolveGoogleClientId(packageConfig, googleOptions),
+          clientSecret: resolveGoogleClientSecret(packageConfig, googleOptions)
+        };
+      },
       openExternal: url => shell.openExternal(url)
     });
     usbService = new UsbService({ deviceService, calibreServiceFactory: executable => new CalibreService({ executable }) });

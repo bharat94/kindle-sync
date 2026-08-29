@@ -19,6 +19,8 @@ const DEFAULTS = Object.freeze({
   smtpPass: '',
   googleEmail: '',
   googleRefreshToken: '',
+  googleClientId: '',
+  googleClientSecret: '',
   usbDocumentsPath: '',
   history: []
 });
@@ -70,31 +72,42 @@ class ConfigStore {
   }
 
   publicConfig() {
-    const { smtpPass, googleRefreshToken, smtpCredentialBinding, usbDocumentsPath, ...safe } = this.data;
+    const { smtpPass, googleRefreshToken, smtpCredentialBinding, usbDocumentsPath, googleClientSecret, ...safe } = this.data;
     return {
       ...safe,
       hasSmtpPassword: Boolean(smtpPass && smtpCredentialBinding === smtpBinding(this.data)),
-      hasGoogleAccount: Boolean(googleRefreshToken && this.data.googleEmail)
+      hasGoogleAccount: Boolean(googleRefreshToken && this.data.googleEmail),
+      hasGoogleClientSecret: Boolean(googleClientSecret)
     };
   }
 
   internalConfig() {
-    const { smtpPass, googleRefreshToken, smtpCredentialBinding, ...safe } = this.data;
+    const { smtpPass, googleRefreshToken, smtpCredentialBinding, googleClientSecret, ...safe } = this.data;
     return {
       ...safe,
       hasSmtpPassword: Boolean(smtpPass && smtpCredentialBinding === smtpBinding(this.data)),
-      hasGoogleAccount: Boolean(googleRefreshToken && this.data.googleEmail)
+      hasGoogleAccount: Boolean(googleRefreshToken && this.data.googleEmail),
+      hasGoogleClientSecret: Boolean(googleClientSecret)
     };
+  }
+
+  // Synchronous because GoogleAuthService.available is a getter consulted during
+  // render. The values live in the already-decrypted in-memory config.
+  googleClient() {
+    return { clientId: this.data.googleClientId || '', clientSecret: this.data.googleClientSecret || '' };
   }
 
   async save(patch = {}) {
     const allowed = [
       'deliveryMode', 'kindleEmail', 'senderEmail', 'approvedSenderConfirmed',
       'smtpProvider', 'smtpHost', 'smtpPort', 'smtpSecure', 'smtpUser',
-      'smtpMaxMb', 'usbDocumentsPath', 'googleEmail'
+      'smtpMaxMb', 'usbDocumentsPath', 'googleEmail', 'googleClientId'
     ];
     for (const key of allowed) {
       if (Object.hasOwn(patch, key)) this.data[key] = patch[key];
+    }
+    if (typeof patch.googleClientSecret === 'string' && patch.googleClientSecret) {
+      this.data.googleClientSecret = patch.googleClientSecret;
     }
     if (typeof patch.smtpPass === 'string' && patch.smtpPass) {
       this.setSecret(patch.smtpPass);
@@ -135,6 +148,14 @@ class ConfigStore {
   async clearSecret() {
     this.data.smtpPass = '';
     this.data.smtpCredentialBinding = '';
+    await this.write();
+  }
+
+  // Clearing the app registration is separate from disconnecting the account:
+  // signing out must not discard a client the user pasted in.
+  async clearGoogleClient() {
+    this.data.googleClientId = '';
+    this.data.googleClientSecret = '';
     await this.write();
   }
 

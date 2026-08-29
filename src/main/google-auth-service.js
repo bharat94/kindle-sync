@@ -33,28 +33,37 @@ function resolveGoogleClientSecret(packageConfig = {}, { allowEnvironment = true
 }
 
 class GoogleAuthService {
-  constructor({ clientId, clientSecret, openExternal, fetchFn = global.fetch, timeoutMs = 180_000, networkTimeoutMs = 20_000 } = {}) {
-    this.clientId = clientId || '';
-    this.clientSecret = clientSecret || '';
+  constructor({ clientId, clientSecret, credentialsProvider, openExternal, fetchFn = global.fetch, timeoutMs = 180_000, networkTimeoutMs = 20_000 } = {}) {
+    // A provider rather than fixed fields, so a client the user pastes into
+    // Settings takes effect immediately instead of at the next launch.
+    this.credentialsProvider = credentialsProvider || (() => ({ clientId, clientSecret }));
     this.openExternal = openExternal;
     this.fetch = fetchFn;
     this.timeoutMs = timeoutMs;
     this.networkTimeoutMs = networkTimeoutMs;
   }
 
+  get credentials() {
+    let resolved = {};
+    try { resolved = this.credentialsProvider() || {}; } catch { resolved = {}; }
+    const text = value => typeof value === 'string' ? value.trim() : '';
+    return { clientId: text(resolved.clientId), clientSecret: text(resolved.clientSecret) };
+  }
+
   get available() {
-    return Boolean(this.clientId);
+    return Boolean(this.credentials.clientId);
   }
 
   async signIn() {
-    if (!this.available) throw Object.assign(new Error('Google sign-in has not been configured for this build.'), { code: 'google_oauth_not_configured' });
+    const { clientId } = this.credentials;
+    if (!clientId) throw Object.assign(new Error('Google sign-in has not been configured. Add a Google client in Settings.'), { code: 'google_oauth_not_configured' });
     const { verifier, challenge } = createPkce();
     const state = base64url(crypto.randomBytes(32));
     const callback = await this.createCallbackServer(state);
     const redirectUri = `http://127.0.0.1:${callback.port}/oauth/callback`;
     const authUrl = new URL(AUTH_URL);
     authUrl.search = new URLSearchParams({
-      client_id: this.clientId,
+      client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
       scope: `openid email ${GMAIL_SEND_SCOPE}`,
@@ -69,7 +78,7 @@ class GoogleAuthService {
       await this.openExternal(authUrl.toString());
       const code = await callback.result;
       const tokens = await this.tokenRequest({
-        client_id: this.clientId,
+        client_id: clientId,
         code,
         code_verifier: verifier,
         grant_type: 'authorization_code',
@@ -96,7 +105,7 @@ class GoogleAuthService {
 
   async refresh(refreshToken) {
     if (!this.available || !refreshToken) throw Object.assign(new Error('Google account connection is incomplete.'), { code: 'google_account_missing' });
-    const tokens = await this.tokenRequest({ client_id: this.clientId, refresh_token: refreshToken, grant_type: 'refresh_token' });
+    const tokens = await this.tokenRequest({ client_id: this.credentials.clientId, refresh_token: refreshToken, grant_type: 'refresh_token' });
     return { accessToken: tokens.access_token, expiresAt: Date.now() + (Number(tokens.expires_in) || 3600) * 1000 };
   }
 
@@ -112,7 +121,8 @@ class GoogleAuthService {
 
   async tokenRequest(fields) {
     const payload = { ...fields };
-    if (this.clientSecret) payload.client_secret = this.clientSecret;
+    const { clientSecret } = this.credentials;
+    if (clientSecret) payload.client_secret = clientSecret;
     const response = await this.fetch(TOKEN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

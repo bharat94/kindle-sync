@@ -27,7 +27,9 @@ const els = {
   webFallbackButton: $('#webFallbackButton'), appPasswordHelp: $('#appPasswordHelp'), smtpFields: $('#smtpFields'),
   googleAccountPanel: $('#googleAccountPanel'), googleAccountTitle: $('#googleAccountTitle'), googleAccountDetail: $('#googleAccountDetail'),
   googleSignInButton: $('#googleSignInButton'), googleDisconnectButton: $('#googleDisconnectButton'), providerDescription: $('#providerDescription'),
-  eraseDataButton: $('#eraseDataButton'), googleSetupHelp: $('#googleSetupHelp')
+  eraseDataButton: $('#eraseDataButton'), googleSetupHelp: $('#googleSetupHelp'),
+  googleClientDetails: $('#googleClientDetails'), googleClientId: $('#googleClientId'), googleClientSecret: $('#googleClientSecret'),
+  googleClientStatus: $('#googleClientStatus'), googleClientHelp: $('#googleClientHelp'), clearGoogleClientButton: $('#clearGoogleClientButton')
 };
 
 const state = {
@@ -294,12 +296,21 @@ function updateProviderVisibility() {
     ? 'Connected with send-only Gmail access. Token stored in macOS Keychain.'
     : state.config.googleOAuthAvailable
       ? 'A secure browser window will ask for Gmail send-only access.'
-      : 'This build has no Google OAuth client ID. Put one in .env as KINDLESYNC_GOOGLE_CLIENT_ID and restart, or pick another provider below and use an app password.';
+      : 'No Google client is configured. Open “Use your own Google client” below to paste one, or pick another provider and use an app password.';
   els.googleSignInButton.hidden = connected;
   els.googleSignInButton.disabled = !state.config.googleOAuthAvailable;
   els.googleDisconnectButton.hidden = !connected;
   els.appPasswordHelp.hidden = true;
   els.googleSetupHelp.hidden = !isGoogle || connected || Boolean(state.config.googleOAuthAvailable);
+  els.googleClientDetails.hidden = !isGoogle;
+  const sources = {
+    user: 'Using the Google client saved on this Mac. It is stored encrypted and overrides any client built into the app.',
+    build: 'Using the Google client built into this app. Paste your own below to override it.',
+    none: 'No Google client yet. Create a Desktop OAuth client in Google Cloud, then paste its ID and secret here.'
+  };
+  els.googleClientStatus.textContent = sources[state.config.googleClientSource] || sources.none;
+  els.googleClientSecret.placeholder = state.config.hasGoogleClientSecret ? 'Saved securely — leave blank to keep' : 'GOCSPX-…';
+  els.clearGoogleClientButton.hidden = state.config.googleClientSource !== 'user';
 }
 
 function fillSettings() {
@@ -314,6 +325,8 @@ function fillSettings() {
   els.smtpPass.value = '';
   els.smtpPass.placeholder = state.config.hasSmtpPassword ? 'Saved securely — leave blank to keep' : 'App-specific password';
   els.smtpMaxMb.value = state.config.smtpMaxMb || PROVIDERS[els.smtpProvider.value].maxMb;
+  els.googleClientId.value = state.config.googleClientId || '';
+  els.googleClientSecret.value = '';
   updateProviderVisibility();
   els.settingsMessage.hidden = true;
 }
@@ -337,7 +350,9 @@ async function saveSettings({ close = true, silent = false } = {}) {
       smtpSecure: els.smtpSecure.checked,
       smtpUser: els.smtpUser.value,
       smtpPass: els.smtpPass.value,
-      smtpMaxMb: Number(els.smtpMaxMb.value)
+      smtpMaxMb: Number(els.smtpMaxMb.value),
+      googleClientId: els.googleClientId.value,
+      googleClientSecret: els.googleClientSecret.value
     });
     if (!silent) {
       els.settingsMessage.textContent = els.smtpProvider.value === 'gmail'
@@ -518,6 +533,12 @@ $('#amazonSettingsButton').addEventListener('click', () => window.kindleSync.ope
 els.amazonUsbButton.addEventListener('click', () => window.kindleSync.openHelp('amazonUsbHelp'));
 els.webFallbackButton.addEventListener('click', () => window.kindleSync.openHelp('sendToKindle'));
 els.googleSetupHelp.addEventListener('click', () => window.kindleSync.openHelp('googleCloudSetup'));
+els.googleClientHelp.addEventListener('click', () => window.kindleSync.openHelp('googleCloudSetup'));
+els.clearGoogleClientButton.addEventListener('click', async () => {
+  state.config = await window.kindleSync.clearGoogleClient();
+  fillSettings();
+  render();
+});
 els.detectButton.addEventListener('click', probeDevice);
 els.chooseUsbTargetButton.addEventListener('click', async () => {
   const result = await window.kindleSync.pickUsbTarget();

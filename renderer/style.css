@@ -152,6 +152,11 @@ h1 { margin: 0; font-size: 25px; letter-spacing: -.035em; }
 .receipt { display: grid; grid-template-columns: 44px 1fr; gap: 14px; padding: 18px; }
 .receipt-check { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 21px; font-weight: 760; }
 .receipt p:not(.eyebrow) { margin: 5px 0 0; }
+.client-details { margin-top: 10px; font-size: 12px; }
+.client-details summary { width: max-content; cursor: pointer; color: var(--muted); }
+.client-details label { margin-top: 8px; }
+.client-status { margin: 8px 0 0; color: var(--muted); }
+
 .details { margin-top: 18px; color: var(--muted); font-size: 12px; }
 .details summary { width: max-content; cursor: pointer; }
 .detail-list { margin: 10px 0 0; padding: 12px 12px 12px 30px; border-radius: 10px; background: color-mix(in srgb, var(--surface-solid) 65%, transparent); }

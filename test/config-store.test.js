@@ -117,3 +117,61 @@ test('erase resets memory and removes the encrypted config envelope', async t =>
   assert.equal(store.publicConfig().kindleEmail, '');
   await assert.rejects(fs.access(filePath), { code: 'ENOENT' });
 });
+
+test('a user-supplied Google client survives restart and its secret stays private', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'kindlesync-config-'));
+  const filePath = path.join(dir, 'kindle-sync-config.json');
+  try {
+    const store = new ConfigStore({ filePath, cryptoProvider });
+    await store.init();
+    await store.save({
+      googleClientId: '000-mine.apps.googleusercontent.com',
+      googleClientSecret: 'GOCSPX-user-secret',
+      kindleEmail: 'reader@kindle.com'
+    });
+
+    const publicView = store.publicConfig();
+    assert.equal(publicView.googleClientId, '000-mine.apps.googleusercontent.com');
+    assert.equal(publicView.hasGoogleClientSecret, true);
+    assert.equal(publicView.googleClientSecret, undefined, 'the secret must never reach the renderer');
+    assert.equal(store.internalConfig().googleClientSecret, undefined);
+
+    // Nothing readable on disk, and the values come back on the next launch.
+    const raw = await fs.readFile(filePath, 'utf8');
+    assert.deepEqual(Object.keys(JSON.parse(raw)).sort(), ['protectedDataCiphertext', 'schemaVersion']);
+    assert.ok(!raw.includes('GOCSPX-user-secret'));
+    assert.ok(!raw.includes('mine.apps.googleusercontent.com'));
+
+    const restarted = new ConfigStore({ filePath, cryptoProvider });
+    await restarted.init();
+    assert.deepEqual(restarted.googleClient(), {
+      clientId: '000-mine.apps.googleusercontent.com',
+      clientSecret: 'GOCSPX-user-secret'
+    });
+    assert.equal(restarted.publicConfig().kindleEmail, 'reader@kindle.com');
+
+    // A blank secret on a later save means "keep what is stored", matching smtpPass.
+    await restarted.save({ googleClientId: '000-mine.apps.googleusercontent.com', googleClientSecret: '' });
+    assert.equal(restarted.googleClient().clientSecret, 'GOCSPX-user-secret');
+
+    await restarted.clearGoogleClient();
+    assert.deepEqual(restarted.googleClient(), { clientId: '', clientSecret: '' });
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('disconnecting the Google account keeps the client registration', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'kindlesync-config-'));
+  try {
+    const store = new ConfigStore({ filePath: path.join(dir, 'kindle-sync-config.json'), cryptoProvider });
+    await store.init();
+    await store.save({ googleClientId: 'own.apps.googleusercontent.com', googleClientSecret: 'GOCSPX-keep', googleEmail: 'reader@gmail.com' });
+    store.setGoogleRefreshToken('refresh');
+    await store.clearGoogleAccount();
+    assert.equal(store.publicConfig().hasGoogleAccount, false);
+    assert.deepEqual(store.googleClient(), { clientId: 'own.apps.googleusercontent.com', clientSecret: 'GOCSPX-keep' });
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});

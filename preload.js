@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('kindleSync', {
   testSmtp: () => ipcRenderer.invoke('smtp:test'),
   signInWithGoogle: () => ipcRenderer.invoke('google:sign-in'),
   disconnectGoogle: () => ipcRenderer.invoke('google:disconnect'),
+  clearGoogleClient: () => ipcRenderer.invoke('google:clear-client'),
   sendEmail: ids => ipcRenderer.invoke('delivery:email', ids),
   probeDevice: () => ipcRenderer.invoke('device:probe'),
   pickUsbTarget: () => ipcRenderer.invoke('device:pick-target'),

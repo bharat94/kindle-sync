@@ -132,3 +132,34 @@ test('a rejected exchange identifies the Google error code', async () => {
     return true;
   });
 });
+
+test('a user-supplied client overrides the build and never borrows its secret', async () => {
+  const own = { clientId: '', clientSecret: '' };
+  const calls = [];
+  const service = new GoogleAuthService({
+    credentialsProvider: () => own.clientId ? own : { clientId: 'build.apps.googleusercontent.com', clientSecret: 'BUILD-SECRET' },
+    fetchFn: async (url, options) => {
+      calls.push(new URLSearchParams(options.body));
+      return { ok: true, json: async () => ({ access_token: 'access', expires_in: 3600 }) };
+    }
+  });
+
+  await service.refresh('token');
+  assert.equal(calls[0].get('client_id'), 'build.apps.googleusercontent.com');
+  assert.equal(calls[0].get('client_secret'), 'BUILD-SECRET');
+
+  own.clientId = 'mine.apps.googleusercontent.com';
+  own.clientSecret = 'MY-SECRET';
+  await service.refresh('token');
+  assert.equal(calls[1].get('client_id'), 'mine.apps.googleusercontent.com');
+  assert.equal(calls[1].get('client_secret'), 'MY-SECRET', 'a user client must use its own secret, never the build one');
+});
+
+test('availability follows the current credentials without a restart', async () => {
+  const own = { clientId: '', clientSecret: '' };
+  const service = new GoogleAuthService({ credentialsProvider: () => own });
+  assert.equal(service.available, false);
+  own.clientId = 'mine.apps.googleusercontent.com';
+  assert.equal(service.available, true);
+  await assert.rejects(() => new GoogleAuthService({ credentialsProvider: () => ({}) }).signIn(), /Settings/);
+});

@@ -4,7 +4,15 @@ contextBridge.exposeInMainWorld('kindleSync', {
   getState: () => ipcRenderer.invoke('app:get-state'),
   pickFiles: () => ipcRenderer.invoke('files:pick'),
   registerDroppedFiles: files => {
-    const paths = Array.from(files || [], file => webUtils.getPathForFile(file)).filter(Boolean);
+    // Recover paths item by item: a single undroppable entry (a folder, or a
+    // drag source with no filesystem backing) must not discard the whole batch.
+    const paths = [];
+    for (const file of Array.from(files || [])) {
+      try {
+        const filePath = webUtils.getPathForFile(file);
+        if (filePath) paths.push(filePath);
+      } catch {}
+    }
     return ipcRenderer.invoke('files:register-drop', paths);
   },
   removeFile: id => ipcRenderer.invoke('files:remove', id),

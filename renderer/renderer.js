@@ -453,16 +453,41 @@ async function chooseFiles() {
   ingest(await window.kindleSync.pickFiles());
 }
 
+async function acceptDroppedFiles(fileList) {
+  const dropped = Array.from(fileList || []);
+  if (!dropped.length) return;
+  const result = await window.kindleSync.registerDroppedFiles(dropped);
+  // Nothing queued and nothing rejected means no path could be recovered at
+  // all. Say so, rather than leaving the drop looking like it silently worked.
+  if (!result?.added?.length && !result?.rejected?.length) {
+    showNotice(`${dropped.length === 1 ? 'That item' : 'Those items'} could not be read as a file. Drag from Finder, or use “Choose Books…”.`, 'error');
+    addDetail(`A drop of ${dropped.length} item${dropped.length === 1 ? '' : 's'} produced no readable file path.`);
+    return;
+  }
+  ingest(result);
+}
+
 for (const button of [els.chooseButton, els.addMoreButton]) button.addEventListener('click', chooseFiles);
-els.fileInput.addEventListener('change', async event => { ingest(await window.kindleSync.registerDroppedFiles(event.target.files)); event.target.value = ''; });
-['dragenter', 'dragover'].forEach(name => els.dropZone.addEventListener(name, event => { event.preventDefault(); els.dropZone.classList.add('dragging'); }));
-['dragleave', 'drop'].forEach(name => els.dropZone.addEventListener(name, async event => {
+els.fileInput.addEventListener('change', async event => { await acceptDroppedFiles(event.target.files); event.target.value = ''; });
+
+// The whole window is the drop target. Accepting drops only on #dropZone left
+// the rest of the window looking droppable while silently discarding files,
+// which is worst once a queue exists and the zone collapses to a thin strip.
+['dragenter', 'dragover'].forEach(name => window.addEventListener(name, event => {
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+  els.dropZone.classList.add('dragging');
+}));
+['dragleave', 'dragend'].forEach(name => window.addEventListener(name, event => {
+  // relatedTarget is null only when the pointer actually leaves the window.
+  if (name === 'dragleave' && event.relatedTarget) return;
+  els.dropZone.classList.remove('dragging');
+}));
+window.addEventListener('drop', async event => {
   event.preventDefault();
   els.dropZone.classList.remove('dragging');
-  if (name === 'drop') ingest(await window.kindleSync.registerDroppedFiles(event.dataTransfer.files));
-}));
-window.addEventListener('dragover', event => event.preventDefault());
-window.addEventListener('drop', event => event.preventDefault());
+  await acceptDroppedFiles(event.dataTransfer?.files);
+});
 els.clearButton.addEventListener('click', async () => { await Promise.all(state.queue.map(file => window.kindleSync.removeFile(file.id))); state.queue = []; render(); });
 els.sendButton.addEventListener('click', send);
 els.settingsButton.addEventListener('click', openSettings);

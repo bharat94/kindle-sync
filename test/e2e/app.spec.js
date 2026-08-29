@@ -187,3 +187,28 @@ test('a connected modern Kindle is shown as unsupported MTP, never as ready', as
     await application.close();
   }
 });
+
+test('a drop anywhere in the window is handled, not silently swallowed', async ({}, testInfo) => {
+  const { application, window } = await launch(testInfo);
+  try {
+    // document.body is deliberately outside #dropZone. Before the whole-window
+    // drop target existed, the window-level preventDefault consumed this event
+    // and the user got no queue entry and no explanation.
+    await window.evaluate(() => {
+      const transfer = new DataTransfer();
+      transfer.items.add(new File(['ebook'], 'dropped-outside-zone.epub'));
+      document.body.dispatchEvent(new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }));
+    });
+
+    // A synthetic File has no filesystem backing, so no path can be recovered.
+    // The app must say that rather than appear to have accepted the book.
+    const notice = window.locator('#notice');
+    await expect(notice).toBeVisible();
+    await expect(notice).toContainText('could not be read as a file');
+    await expect(window.locator('.file-row')).toHaveCount(0);
+
+    await expect(window.locator('#detailList li').first()).toContainText('produced no readable file path');
+  } finally {
+    await application.close();
+  }
+});

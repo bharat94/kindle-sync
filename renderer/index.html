@@ -89,7 +89,7 @@
           <div class="step">3</div><div class="form-content"><h3>Mail provider</h3><p id="providerDescription">Connect Google once. KindleSync requests permission to send email—not to read your inbox.</p><label for="smtpProvider">Provider</label><select id="smtpProvider"><option value="gmail">Gmail — Sign in with Google</option><option value="icloud">iCloud Mail</option><option value="outlook">Outlook</option><option value="custom">Custom SMTP</option></select>
             <div id="googleAccountPanel" class="account-panel">
               <div class="account-copy"><strong id="googleAccountTitle">Google account not connected</strong><span id="googleAccountDetail">Your authorization token is encrypted with macOS Keychain.</span></div>
-              <button id="googleSignInButton" type="button" class="button google-button">Sign in with Google</button>
+              <button id="googleSignInButton" type="button" class="button google-button">Sign in with Google</button><button id="googleCancelSignInButton" type="button" class="text-button" hidden>Cancel</button>
               <button id="googleDisconnectButton" type="button" class="text-button danger" hidden>Disconnect</button><button id="googleSetupHelp" type="button" class="text-button" hidden>How to enable Google sign-in ↗</button>
             </div>
             <details id="googleClientDetails" class="client-details">

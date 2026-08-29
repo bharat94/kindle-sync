@@ -35,3 +35,38 @@ test('recipient rejection is not reported as submitted', async () => {
   assert.equal(result.ok, false);
   assert.equal(result.code, 'smtp_recipient_rejected');
 });
+
+test('an interrupted transfer records what was actually accepted', async () => {
+  let attempts = 0;
+  const service = new MailService({ transportFactory: () => ({
+    sendMail: async () => {
+      attempts += 1;
+      if (attempts === 2) throw Object.assign(new Error('connection reset'), { code: 'ECONNRESET' });
+      return { messageId: `message-${attempts}`, rejected: [] };
+    },
+    close() {}
+  }) });
+  const records = Array.from({ length: 26 }, (_, index) => ({ id: String(index), name: `book-${index}.epub`, ext: '.epub', size: 10, path: `/tmp/book-${index}.epub` }));
+
+  const result = await service.send(records, config, 'secret');
+  assert.equal(result.ok, false);
+  assert.equal(result.code, 'smtp_submit_failed');
+
+  // The first batch of 25 really did reach the mail server; history must say so.
+  assert.ok(result.receipt, 'a partially completed transfer must still produce a receipt');
+  assert.equal(result.receipt.status, 'partial');
+  assert.equal(result.receipt.files.length, 25);
+  assert.equal(result.receipt.files[0].name, 'book-0.epub');
+  assert.match(result.receipt.statement, /the rest were not submitted/i);
+  assert.equal(result.receipt.destination.includes('reader'), false);
+  assert.equal(result.receipt.smtpHost, 'smtp.example.com');
+});
+
+test('a transfer that never reached the server produces no receipt', async () => {
+  const service = new MailService({ transportFactory: () => ({
+    sendMail: async () => { throw new Error('unreachable'); }, close() {}
+  }) });
+  const result = await service.send([{ id: '1', name: 'book.epub', ext: '.epub', size: 10, path: '/tmp/book.epub' }], config, 'secret');
+  assert.equal(result.ok, false);
+  assert.equal(result.receipt ?? null, null, 'nothing was accepted, so nothing may be claimed');
+});

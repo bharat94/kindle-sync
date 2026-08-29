@@ -83,6 +83,12 @@ function validateUsbRecords(records, { hasCalibre = false } = {}) {
   return { ok: issues.length === 0, issues };
 }
 
+// Which records a partially completed email transfer actually got out the door.
+function submittedRecords(records = [], submitted = []) {
+  const ids = new Set(submitted.flatMap(item => item.ids || []));
+  return records.filter(record => ids.has(record.id));
+}
+
 function maskEmail(value = '') {
   const [local, domain] = value.split('@');
   if (!domain) return '';
@@ -104,6 +110,7 @@ module.exports = {
   validateEmailConfig,
   createEmailBatches,
   validateUsbRecords,
+  submittedRecords,
   maskEmail,
   extensionOf
 };

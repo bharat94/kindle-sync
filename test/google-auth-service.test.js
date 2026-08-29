@@ -163,3 +163,17 @@ test('availability follows the current credentials without a restart', async () 
   assert.equal(service.available, true);
   await assert.rejects(() => new GoogleAuthService({ credentialsProvider: () => ({}) }).signIn(), /Settings/);
 });
+
+test('a pending sign-in can be cancelled instead of waiting out the timeout', async () => {
+  let service;
+  service = new GoogleAuthService({
+    clientId: 'desktop-client.apps.googleusercontent.com',
+    // Google can block before ever redirecting, so simulate the user giving up.
+    openExternal: async () => { setImmediate(() => service.cancelSignIn()); }
+  });
+  await assert.rejects(() => service.signIn(), error => {
+    assert.equal(error.code, 'google_sign_in_cancelled');
+    return true;
+  });
+  assert.equal(service.cancelSignIn(), false, 'nothing remains pending once it settles');
+});

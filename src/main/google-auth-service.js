@@ -60,6 +60,7 @@ class GoogleAuthService {
     const { verifier, challenge } = createPkce();
     const state = base64url(crypto.randomBytes(32));
     const callback = await this.createCallbackServer(state);
+    this.pendingSignIn = callback;
     const redirectUri = `http://127.0.0.1:${callback.port}/oauth/callback`;
     const authUrl = new URL(AUTH_URL);
     authUrl.search = new URLSearchParams({
@@ -86,7 +87,7 @@ class GoogleAuthService {
       });
       if (!tokens.refresh_token) throw Object.assign(new Error('Google did not return an offline refresh token. Remove KindleSync from your Google account and try again.'), { code: 'google_refresh_token_missing' });
       const granted = new Set(String(tokens.scope || '').split(/\s+/));
-      if (tokens.scope && !granted.has(GMAIL_SEND_SCOPE)) throw Object.assign(new Error('The Gmail send permission was not granted.'), { code: 'google_scope_missing' });
+      if (tokens.scope && !granted.has(GMAIL_SEND_SCOPE)) throw Object.assign(new Error('The Gmail send permission was not granted. Sign in again and tick “Send email on your behalf” on the Google consent screen.'), { code: 'google_scope_missing' });
       const userResponse = await this.fetch(USERINFO_URL, { headers: { Authorization: `Bearer ${tokens.access_token}` }, signal: AbortSignal.timeout(this.networkTimeoutMs) });
       if (!userResponse.ok) throw Object.assign(new Error('Google account details could not be read.'), { code: 'google_userinfo_failed' });
       const user = await userResponse.json();
@@ -99,8 +100,17 @@ class GoogleAuthService {
         scope: tokens.scope || GMAIL_SEND_SCOPE
       };
     } finally {
+      this.pendingSignIn = null;
       callback.close();
     }
+  }
+
+  // Google can refuse before ever redirecting to the loopback callback, which
+  // otherwise leaves sign-in pending for the full timeout with nothing to click.
+  cancelSignIn() {
+    if (!this.pendingSignIn) return false;
+    this.pendingSignIn.cancel();
+    return true;
   }
 
   async refresh(refreshToken) {
@@ -168,7 +178,16 @@ class GoogleAuthService {
     }, this.timeoutMs);
     timer.unref?.();
     return new Promise((resolve, reject) => {
-      server.once('listening', () => resolve({ port: server.address().port, result, close: () => { clearTimeout(timer); if (server.listening) server.close(); } }));
+      const shutdown = () => { clearTimeout(timer); if (server.listening) server.close(); };
+      server.once('listening', () => resolve({
+        port: server.address().port,
+        result,
+        close: shutdown,
+        cancel: () => {
+          settle.reject(Object.assign(new Error('Google sign-in was cancelled.'), { code: 'google_sign_in_cancelled' }));
+          shutdown();
+        }
+      }));
       server.once('error', reject);
     });
   }

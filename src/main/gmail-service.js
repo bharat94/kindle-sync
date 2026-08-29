@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-const { createEmailBatches, maskEmail } = require('./delivery-policy');
+const { createEmailBatches, maskEmail, submittedRecords } = require('./delivery-policy');
 
 function toBase64url(value) {
   return Buffer.from(value).toString('base64url');
@@ -28,6 +28,22 @@ class GmailService {
     }
   }
 
+  partialReceipt(records, config, submitted) {
+    const sent = submittedRecords(records, submitted);
+    if (!sent.length) return null;
+    return {
+      id: `email-${Date.now()}`,
+      method: 'email',
+      status: 'partial',
+      createdAt: new Date().toISOString(),
+      files: sent.map(({ name, size }) => ({ name, size })),
+      destination: maskEmail(config.kindleEmail),
+      provider: 'Gmail',
+      messageIds: submitted.map(item => item.messageId),
+      statement: 'Some books were sent by Gmail before the transfer stopped; the rest were not submitted.'
+    };
+  }
+
   async send(records, config, accessToken) {
     const policy = createEmailBatches(records, config);
     if (!policy.ok) return { ok: false, code: 'email_preflight_failed', issues: policy.issues };
@@ -45,11 +61,11 @@ class GmailService {
         const body = await response.json().catch(() => ({}));
         if (!response.ok || !body.id) {
           const code = response.status === 401 ? 'google_session_expired' : 'gmail_submit_failed';
-          return { ok: false, code, submitted, message: 'Gmail could not submit this batch. Reconnect Google and try again.' };
+          return { ok: false, code, submitted, message: 'Gmail could not submit this batch. Reconnect Google and try again.', receipt: this.partialReceipt(records, config, submitted) };
         }
         submitted.push({ messageId: body.id, count: batch.length, ids: batch.map(record => record.id) });
       } catch {
-        return { ok: false, code: 'gmail_submit_failed', submitted, message: 'Gmail could not submit this batch. Check your connection and try again.' };
+        return { ok: false, code: 'gmail_submit_failed', submitted, message: 'Gmail could not submit this batch. Check your connection and try again.', receipt: this.partialReceipt(records, config, submitted) };
       }
     }
     return {

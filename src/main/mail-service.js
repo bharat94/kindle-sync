@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-const { createEmailBatches, maskEmail } = require('./delivery-policy');
+const { createEmailBatches, maskEmail, submittedRecords } = require('./delivery-policy');
 
 class MailService {
   constructor({ transportFactory = nodemailer.createTransport } = {}) {
@@ -51,11 +51,11 @@ class MailService {
           attachments: batch.map(record => ({ filename: record.name, path: record.path }))
         });
         if (Array.isArray(info.rejected) && info.rejected.length) {
-          return { ok: false, code: 'smtp_recipient_rejected', submitted, message: 'The mail server rejected the Kindle recipient.' };
+          return { ok: false, code: 'smtp_recipient_rejected', submitted, message: 'The mail server rejected the Kindle recipient.', receipt: this.partialReceipt(records, config, submitted) };
         }
         submitted.push({ messageId: info.messageId || '', count: batch.length, ids: batch.map(record => record.id) });
       } catch (error) {
-        return { ok: false, code: 'smtp_submit_failed', submitted, message: this.safeError(error) };
+        return { ok: false, code: 'smtp_submit_failed', submitted, message: this.safeError(error), receipt: this.partialReceipt(records, config, submitted) };
       } finally {
         transport.close?.();
       }
@@ -75,6 +75,24 @@ class MailService {
         messageIds: submitted.map(item => item.messageId),
         statement: 'Accepted by your mail server; Kindle delivery not independently confirmed.'
       }
+    };
+  }
+
+  // USB already records a partial receipt; email silently recorded nothing, so
+  // books that really were accepted left no trace in history.
+  partialReceipt(records, config, submitted) {
+    const sent = submittedRecords(records, submitted);
+    if (!sent.length) return null;
+    return {
+      id: `email-${Date.now()}`,
+      method: 'email',
+      status: 'partial',
+      createdAt: new Date().toISOString(),
+      files: sent.map(({ name, size }) => ({ name, size })),
+      destination: maskEmail(config.kindleEmail),
+      smtpHost: config.smtpHost,
+      messageIds: submitted.map(item => item.messageId),
+      statement: 'Some books were accepted by your mail server before the transfer stopped; the rest were not submitted.'
     };
   }
 

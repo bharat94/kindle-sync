@@ -21,6 +21,8 @@ const HELP_LINKS = Object.freeze({
   sendToKindle: 'https://www.amazon.com/sendtokindle',
   amazonUsbHelp: 'https://digprjsurvey.amazon.com/csad/help/node/TCUBEdEkbIhK07ysFu',
   googleAppPasswords: 'https://support.google.com/accounts/answer/185833',
+  icloudAppPasswords: 'https://support.apple.com/102654',
+  outlookAppPasswords: 'https://support.microsoft.com/account-billing/how-to-get-and-use-app-passwords-5896ed9b-4263-e681-128a-a6f2979a7944',
   googleCloudSetup: 'https://console.cloud.google.com/apis/credentials',
   calibre: 'https://calibre-ebook.com/download_osx'
 });
@@ -204,6 +206,10 @@ function registerIpc() {
     const revoked = isTestRuntime() ? true : await googleAuthService.revoke(token);
     await store.clearGoogleAccount();
     return { ...publicConfig(), googleRevocationFailed: Boolean(token && !revoked) };
+  });
+  ipcMain.handle('google:cancel-sign-in', async event => {
+    assertTrusted(event);
+    return { ok: googleAuthService.cancelSignIn() };
   });
   ipcMain.handle('google:clear-client', async event => {
     assertTrusted(event);

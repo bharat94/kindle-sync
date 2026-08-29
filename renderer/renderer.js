@@ -29,7 +29,8 @@ const els = {
   googleSignInButton: $('#googleSignInButton'), googleDisconnectButton: $('#googleDisconnectButton'), providerDescription: $('#providerDescription'),
   eraseDataButton: $('#eraseDataButton'), googleSetupHelp: $('#googleSetupHelp'),
   googleClientDetails: $('#googleClientDetails'), googleClientId: $('#googleClientId'), googleClientSecret: $('#googleClientSecret'),
-  googleClientStatus: $('#googleClientStatus'), googleClientHelp: $('#googleClientHelp'), clearGoogleClientButton: $('#clearGoogleClientButton')
+  googleClientStatus: $('#googleClientStatus'), googleClientHelp: $('#googleClientHelp'), clearGoogleClientButton: $('#clearGoogleClientButton'),
+  googleCancelSignInButton: $('#googleCancelSignInButton')
 };
 
 const state = {
@@ -279,6 +280,17 @@ function applyProviderPreset() {
   updateProviderVisibility();
 }
 
+// Each provider documents app passwords in its own place; sending an iCloud
+// user to Google's page is worse than showing nothing. Custom SMTP only gets a
+// link when the host is recognisably Gmail.
+function appPasswordHelpKey() {
+  const provider = els.smtpProvider.value;
+  if (provider === 'icloud') return 'icloudAppPasswords';
+  if (provider === 'outlook') return 'outlookAppPasswords';
+  if (provider === 'custom' && /(^|\.)gmail\.com$/i.test(els.smtpHost.value.trim())) return 'googleAppPasswords';
+  return '';
+}
+
 function updateProviderVisibility() {
   const isGoogle = els.smtpProvider.value === 'gmail';
   els.googleAccountPanel.hidden = !isGoogle;
@@ -300,7 +312,7 @@ function updateProviderVisibility() {
   els.googleSignInButton.hidden = connected;
   els.googleSignInButton.disabled = !state.config.googleOAuthAvailable;
   els.googleDisconnectButton.hidden = !connected;
-  els.appPasswordHelp.hidden = true;
+  els.appPasswordHelp.hidden = isGoogle || !appPasswordHelpKey();
   els.googleSetupHelp.hidden = !isGoogle || connected || Boolean(state.config.googleOAuthAvailable);
   els.googleClientDetails.hidden = !isGoogle;
   const sources = {
@@ -494,10 +506,16 @@ els.settingsButton.addEventListener('click', openSettings);
 els.settingsForm.addEventListener('submit', async event => { event.preventDefault(); await saveSettings(); });
 $$('.close-dialog').forEach(button => button.addEventListener('click', event => { event.preventDefault(); button.closest('dialog').close(); }));
 els.smtpProvider.addEventListener('change', applyProviderPreset);
+els.smtpHost.addEventListener('input', updateProviderVisibility);
+els.appPasswordHelp.addEventListener('click', () => {
+  const key = appPasswordHelpKey();
+  if (key) window.kindleSync.openHelp(key);
+});
 els.googleSignInButton.addEventListener('click', async () => {
   els.settingsMessage.hidden = true;
   els.googleSignInButton.disabled = true;
   els.googleSignInButton.textContent = 'Opening Google…';
+  els.googleCancelSignInButton.hidden = false;
   try {
     await saveSettings({ close: false, silent: true });
     state.config = await window.kindleSync.signInWithGoogle();
@@ -514,8 +532,10 @@ els.googleSignInButton.addEventListener('click', async () => {
   } finally {
     els.googleSignInButton.textContent = 'Sign in with Google';
     els.googleSignInButton.disabled = !state.config.googleOAuthAvailable;
+    els.googleCancelSignInButton.hidden = true;
   }
 });
+els.googleCancelSignInButton.addEventListener('click', () => window.kindleSync.cancelGoogleSignIn());
 els.googleDisconnectButton.addEventListener('click', async () => {
   state.config = await window.kindleSync.disconnectGoogle();
   fillSettings();

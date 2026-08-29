@@ -10,7 +10,7 @@ const { DeviceService } = require('./device-service');
 const { CalibreService } = require('./calibre-service');
 const { MailService } = require('./mail-service');
 const { GmailService } = require('./gmail-service');
-const { GoogleAuthService, resolveGoogleClientId } = require('./google-auth-service');
+const { GoogleAuthService, resolveGoogleClientId, resolveGoogleClientSecret } = require('./google-auth-service');
 const { UsbService } = require('./usb-service');
 const { validateEmailConfig, createEmailBatches } = require('./delivery-policy');
 const { allowTestRuntime } = require('./runtime-policy');
@@ -316,7 +316,12 @@ function start() {
     deviceService = new DeviceService();
     mailService = new MailService();
     gmailService = new GmailService();
-    googleAuthService = new GoogleAuthService({ clientId: resolveGoogleClientId(require('../../package.json'), { allowEnvironment: !app.isPackaged }), openExternal: url => shell.openExternal(url) });
+    const googleOptions = { allowEnvironment: !app.isPackaged };
+    googleAuthService = new GoogleAuthService({
+      clientId: resolveGoogleClientId(require('../../package.json'), googleOptions),
+      clientSecret: resolveGoogleClientSecret(require('../../package.json'), googleOptions),
+      openExternal: url => shell.openExternal(url)
+    });
     usbService = new UsbService({ deviceService, calibreServiceFactory: executable => new CalibreService({ executable }) });
     registerIpc(); installMenu(); createWindow();
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });

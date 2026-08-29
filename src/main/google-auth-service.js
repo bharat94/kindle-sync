@@ -21,9 +21,21 @@ function resolveGoogleClientId(packageConfig = {}, { allowEnvironment = true } =
   return (environmentId || packageConfig?.kindleSync?.googleOAuthClientId || '').trim();
 }
 
+// Google's installed-app flow requires client_secret at the token endpoint even
+// with PKCE. RFC 8252 section 8.5 and Google's own desktop documentation treat
+// this value as a non-confidential app identifier, not a real secret: it cannot
+// be kept private in a distributed binary, and PKCE is what actually binds the
+// authorization code to this client. It is still resolved like the client ID so
+// it never has to be committed.
+function resolveGoogleClientSecret(packageConfig = {}, { allowEnvironment = true } = {}) {
+  const environmentSecret = allowEnvironment ? process.env.KINDLESYNC_GOOGLE_CLIENT_SECRET : '';
+  return (environmentSecret || packageConfig?.kindleSync?.googleOAuthClientSecret || '').trim();
+}
+
 class GoogleAuthService {
-  constructor({ clientId, openExternal, fetchFn = global.fetch, timeoutMs = 180_000, networkTimeoutMs = 20_000 } = {}) {
+  constructor({ clientId, clientSecret, openExternal, fetchFn = global.fetch, timeoutMs = 180_000, networkTimeoutMs = 20_000 } = {}) {
     this.clientId = clientId || '';
+    this.clientSecret = clientSecret || '';
     this.openExternal = openExternal;
     this.fetch = fetchFn;
     this.timeoutMs = timeoutMs;
@@ -99,10 +111,12 @@ class GoogleAuthService {
   }
 
   async tokenRequest(fields) {
+    const payload = { ...fields };
+    if (this.clientSecret) payload.client_secret = this.clientSecret;
     const response = await this.fetch(TOKEN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(fields).toString(),
+      body: new URLSearchParams(payload).toString(),
       signal: AbortSignal.timeout(this.networkTimeoutMs)
     });
     const body = await response.json().catch(() => ({}));
@@ -150,4 +164,4 @@ class GoogleAuthService {
   }
 }
 
-module.exports = { GoogleAuthService, GMAIL_SEND_SCOPE, createPkce, resolveGoogleClientId };
+module.exports = { GoogleAuthService, GMAIL_SEND_SCOPE, createPkce, resolveGoogleClientId, resolveGoogleClientSecret };

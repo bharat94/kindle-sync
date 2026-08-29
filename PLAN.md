@@ -218,7 +218,7 @@ Adapter contract: `probe()`, `preflight(records, config)`, `send(job, progress)`
 - SMTP secrets cryptographically bound to provider/host/port/TLS/user and invalidated on identity changes.
 - In-memory Chromium session; packaged builds reject all E2E environment hooks and OAuth client substitution.
 - Hardened Electron fuses: no Run-as-Node/`NODE_OPTIONS`/inspection/file privileges; encrypted cookies and validated ASAR-only loading.
-- Google login uses the system browser, loopback-only redirect, PKCE S256, state validation, and send-only scope; no client secret is shipped.
+- Google login uses the system browser, loopback-only redirect, PKCE S256, state validation, and send-only scope. Google's installed-app token endpoint requires `client_secret`, which RFC 8252 §8.5 classifies as a non-confidential app identifier for native clients; PKCE, not that value, is what protects the authorization code. It is never logged, never sent anywhere except Google's token endpoint, and never exposed to the renderer.
 - TLS required for presets, certificate validation, bounded SMTP timeouts.
 - Calibre executable + argv, `shell:false`, bounded output/time, unique temp cleanup.
 - Revalidate writable Kindle target at send time and contain destination under `documents/`.
@@ -382,4 +382,4 @@ Resume at the first unchecked item above. Never regress:
 6. Never invoke Calibre with shell text.
 7. Never accept arbitrary renderer USB destinations.
 8. Never mark signing, live SMTP, or physical hardware tests complete without doing them.
-9. Never ship a Google client secret, request inbox-reading scope, or call Gmail API acceptance “Kindle delivered.”
+9. Never request inbox-reading scope, or call Gmail API acceptance “Kindle delivered.” The installed-app `client_secret` is required by Google and is not a confidential credential (RFC 8252 §8.5), but it still must never be committed, logged, or sent anywhere except Google's token endpoint.

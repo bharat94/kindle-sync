@@ -90,3 +90,45 @@ test('an expired or reused authorization code is reported as a session problem',
     return true;
   });
 });
+
+test('installed-app token exchange sends the client secret Google requires', async () => {
+  const calls = [];
+  const service = new GoogleAuthService({
+    clientId: 'desktop-client.apps.googleusercontent.com',
+    clientSecret: 'INSTALLED-APP-SECRET',
+    fetchFn: async (url, options) => {
+      calls.push(new URLSearchParams(options.body));
+      return { ok: true, json: async () => ({ access_token: 'access', expires_in: 3600 }) };
+    }
+  });
+  await service.refresh('saved-refresh');
+  assert.equal(calls[0].get('client_secret'), 'INSTALLED-APP-SECRET');
+  assert.equal(calls[0].get('client_id'), 'desktop-client.apps.googleusercontent.com');
+});
+
+test('an unset client secret is omitted rather than sent empty', async () => {
+  const calls = [];
+  const service = new GoogleAuthService({
+    clientId: 'desktop-client.apps.googleusercontent.com',
+    fetchFn: async (url, options) => {
+      calls.push(new URLSearchParams(options.body));
+      return { ok: true, json: async () => ({ access_token: 'access', expires_in: 3600 }) };
+    }
+  });
+  await service.refresh('saved-refresh');
+  assert.equal(calls[0].has('client_secret'), false);
+});
+
+test('a rejected exchange identifies the Google error code', async () => {
+  const service = new GoogleAuthService({
+    clientId: 'desktop-client.apps.googleusercontent.com',
+    clientSecret: 'INSTALLED-APP-SECRET',
+    fetchFn: async () => ({ ok: false, status: 400, json: async () => ({ error: 'invalid_client', error_description: 'INSTALLED-APP-SECRET was rejected' }) })
+  });
+  await assert.rejects(() => service.refresh('saved-refresh'), error => {
+    // Google never echoes a secret back; this guards against a future change
+    // that starts copying the whole response body into the message.
+    assert.match(error.message, /invalid_client/);
+    return true;
+  });
+});

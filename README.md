@@ -73,12 +73,14 @@ iCloud Mail, Outlook, and custom SMTP are still available under **Use another ma
 
 ### Enable Google sign-in in a development build
 
-Google requires the app developer—not every user—to register a Desktop OAuth client. Create a Google Cloud project, enable Gmail API, configure the OAuth consent screen, and create a **Desktop app** client ID. No client secret is used or shipped.
+Google requires the app developer—not every user—to register a Desktop OAuth client. Create a Google Cloud project, enable Gmail API, configure the OAuth consent screen, and create a **Desktop app** client ID.
+
+Copy both the client ID and the client secret. Google's installed-app flow requires `client_secret` at the token endpoint even with PKCE, so sign-in fails with `client_secret is missing` without it. [RFC 8252 §8.5](https://datatracker.ietf.org/doc/html/rfc8252#section-8.5) and Google's desktop documentation both treat this value as a non-confidential app identifier rather than a real credential: a distributed binary cannot keep it private, and PKCE is what actually binds the authorization code to this client. KindleSync keeps it in gitignored `.env` regardless, and never logs it or exposes it to the renderer.
 
 Then supply the ID either way — `.env` is gitignored, so it never reaches a commit:
 
 ```bash
-cp .env.example .env      # then paste your client ID into .env
+cp .env.example .env      # then paste your client ID and secret into .env
 npm start
 
 # or, without a file:
@@ -87,7 +89,7 @@ KINDLESYNC_GOOGLE_CLIENT_ID="your-id.apps.googleusercontent.com" npm start
 
 KindleSync reads `.env` only when the app is not packaged, and only keys prefixed `KINDLESYNC_`. An exported shell variable always takes precedence. If the ID is missing, Settings says so and links to the Google Cloud credentials page instead of leaving the button dead.
 
-For a packaged build, set `kindleSync.googleOAuthClientId` in `package.json` before building. Packaged builds deliberately ignore environment-based client IDs and test overrides. Public use of the sensitive `gmail.send` scope requires Google's OAuth app verification.
+For a packaged build, set `kindleSync.googleOAuthClientId` and `kindleSync.googleOAuthClientSecret` in `package.json` before building. Packaged builds deliberately ignore environment-based client IDs and test overrides. Public use of the sensitive `gmail.send` scope requires Google's OAuth app verification.
 
 ## Delivery options
 

@@ -14,12 +14,14 @@ const { GoogleAuthService, resolveGoogleClientId } = require('./google-auth-serv
 const { UsbService } = require('./usb-service');
 const { validateEmailConfig, createEmailBatches } = require('./delivery-policy');
 const { allowTestRuntime } = require('./runtime-policy');
+const { loadDevEnv } = require('./dev-env');
 
 const HELP_LINKS = Object.freeze({
   amazonSettings: 'https://www.amazon.com/hz/mycd/myx#/home/settings/payment',
   sendToKindle: 'https://www.amazon.com/sendtokindle',
   amazonUsbHelp: 'https://digprjsurvey.amazon.com/csad/help/node/TCUBEdEkbIhK07ysFu',
   googleAppPasswords: 'https://support.google.com/accounts/answer/185833',
+  googleCloudSetup: 'https://console.cloud.google.com/apis/credentials',
   calibre: 'https://calibre-ebook.com/download_osx'
 });
 
@@ -293,6 +295,7 @@ async function flushOpenPaths() {
 }
 
 function start() {
+  loadDevEnv({ isPackaged: app.isPackaged, root: path.resolve(__dirname, '..', '..') });
   if (isTestRuntime() && process.env.KINDLESYNC_USER_DATA_DIR) app.setPath('userData', process.env.KINDLESYNC_USER_DATA_DIR);
   if (!app.requestSingleInstanceLock()) { app.quit(); return; }
   app.on('open-file', (event, filePath) => { event.preventDefault(); pendingOpenPaths.push(filePath); flushOpenPaths(); });

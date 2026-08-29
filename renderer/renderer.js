@@ -27,7 +27,7 @@ const els = {
   webFallbackButton: $('#webFallbackButton'), appPasswordHelp: $('#appPasswordHelp'), smtpFields: $('#smtpFields'),
   googleAccountPanel: $('#googleAccountPanel'), googleAccountTitle: $('#googleAccountTitle'), googleAccountDetail: $('#googleAccountDetail'),
   googleSignInButton: $('#googleSignInButton'), googleDisconnectButton: $('#googleDisconnectButton'), providerDescription: $('#providerDescription'),
-  eraseDataButton: $('#eraseDataButton')
+  eraseDataButton: $('#eraseDataButton'), googleSetupHelp: $('#googleSetupHelp')
 };
 
 const state = {
@@ -294,11 +294,12 @@ function updateProviderVisibility() {
     ? 'Connected with send-only Gmail access. Token stored in macOS Keychain.'
     : state.config.googleOAuthAvailable
       ? 'A secure browser window will ask for Gmail send-only access.'
-      : 'Google OAuth client ID is not configured in this development build.';
+      : 'This build has no Google OAuth client ID. Put one in .env as KINDLESYNC_GOOGLE_CLIENT_ID and restart, or pick another provider below and use an app password.';
   els.googleSignInButton.hidden = connected;
   els.googleSignInButton.disabled = !state.config.googleOAuthAvailable;
   els.googleDisconnectButton.hidden = !connected;
   els.appPasswordHelp.hidden = true;
+  els.googleSetupHelp.hidden = !isGoogle || connected || Boolean(state.config.googleOAuthAvailable);
 }
 
 function fillSettings() {
@@ -516,6 +517,7 @@ els.forgetPasswordButton.addEventListener('click', async () => { state.config = 
 $('#amazonSettingsButton').addEventListener('click', () => window.kindleSync.openHelp('amazonSettings'));
 els.amazonUsbButton.addEventListener('click', () => window.kindleSync.openHelp('amazonUsbHelp'));
 els.webFallbackButton.addEventListener('click', () => window.kindleSync.openHelp('sendToKindle'));
+els.googleSetupHelp.addEventListener('click', () => window.kindleSync.openHelp('googleCloudSetup'));
 els.detectButton.addEventListener('click', probeDevice);
 els.chooseUsbTargetButton.addEventListener('click', async () => {
   const result = await window.kindleSync.pickUsbTarget();

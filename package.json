@@ -40,7 +40,7 @@
     "electron-builder": "^26.15.3"
   },
   "dependencies": {
-    "nodemailer": "^9.0.5"
+    "nodemailer": "^10.0.2"
   },
   "build": {
     "appId": "com.kindlesync.app",
